@@ -521,7 +521,8 @@ form.join { display: grid; gap: 18px; margin-top: 18px; }
   .tbl th, .tbl td { padding-left: 9px; padding-right: 9px; }
   .m-table .btn.sm, .tbl .btn.sm { padding-left: 9px; padding-right: 9px; }
 }
-html, body { overflow-x: hidden; }
+html, body { overflow-x: clip; }
+.side { align-self: start; height: 100vh; height: 100dvh; overflow-y: auto; }
 .url-box { overflow: visible !important; white-space: normal !important; overflow-wrap: anywhere; word-break: break-all; }
 
 /* ---- Team + view-only mode ---- */
