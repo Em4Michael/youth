@@ -1,0 +1,18 @@
+{
+  "name": "signup-hub",
+  "version": "1.0.0",
+  "description": "Sign-up links with a daily cap, a members database with Friday call/attendance tracking, and an analytics dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "express": "^5.3.0",
+    "node-sqlite3-wasm": "^0.8.60"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    .join-wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+    .join-card { width: 100%; max-width: 440px; padding: 28px; }
+    .join-card h1 { margin: 14px 0 6px; font-size: 24px; }
+    .slots { display: flex; align-items: center; gap: 10px; margin: 16px 0 4px; }
+    .slots .pips { display: flex; gap: 6px; }
+    .slots .pip { width: 26px; height: 8px; border-radius: 999px; background: var(--border); }
+    .slots .pip.on { background: var(--accent); }
+    form.join { display: grid; gap: 16px; margin-top: 20px; }
+    .nets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .nets label { position: relative; }
+    .nets input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+    .nets span { display: grid; place-items: center; min-height: 42px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); font-weight: 600; font-size: 14px; }
+    .nets input:checked + span { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .nets input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .big-state { text-align: center; padding: 18px 0 6px; }
+    .big-state .ico { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 14px; }
+    .big-state .ico svg { width: 28px; height: 28px; }
+    .big-state h2 { font-size: 21px; margin-bottom: 6px; }
+    .ico.ok { background: var(--good-soft); color: var(--good); }
+    .ico.stop { background: var(--warn-soft); color: var(--warn); }
+    .ico.no { background: var(--surface-2); color: var(--text-2); }
+    .pos { font-size: 44px; font-weight: 700; letter-spacing: -.03em; margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="join-wrap">
+    <div class="card join-card" id="card" aria-live="polite">
+      <p class="muted">Loading…</p>
+    </div>
+  </div>
+  <script src="/join.js"></script>
+</body>
+</html>
