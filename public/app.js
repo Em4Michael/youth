@@ -114,13 +114,23 @@
     try {
       const j = await api('GET', '/api/auth/me');
       me = j.user; cfg.tz = j.tz; today = j.today;
+      if (location.pathname === '/login' || location.pathname === '/signup') history.replaceState(null, '', '/' + (location.hash || '#/dashboard'));
       showShell();
     } catch { showAuth(); }
   }
 
+  let authPop = null;
   function showAuth() {
     cleanup?.(); cleanup = null;
-    let mode = cfg.first_user ? 'register' : 'login';
+    // /login and /signup are real addresses; anything else signed-out lands on the login page.
+    const modeFromUrl = () => ((location.pathname === '/signup' || cfg.first_user) && (cfg.can_register || cfg.first_user) ? 'register' : 'login');
+    let mode = modeFromUrl();
+    const urlFor = () => (mode === 'register' ? '/signup' : '/login');
+    if (location.pathname !== urlFor()) history.replaceState(null, '', urlFor());
+    if (authPop) window.removeEventListener('popstate', authPop);
+    authPop = () => { if (!me && $('#authForm')) { mode = modeFromUrl(); draw(); } };
+    window.addEventListener('popstate', authPop);
+    const go = (m) => { mode = m; history.pushState(null, '', urlFor()); draw(); };
     const draw = () => {
       root.innerHTML = `<div class="auth">
         <section class="auth-hero">
@@ -146,7 +156,9 @@
             <div class="form-err" role="alert"></div>
             <button class="btn primary" style="min-height:48px;font-size:16px" type="submit">${mode === 'login' ? 'Sign in' : 'Create account'}</button>
           </form>
-          ${cfg.can_register && !cfg.first_user ? `<p class="sub" style="margin-top:18px;text-align:center">${mode === 'login' ? 'New here?' : 'Already have an account?'} <a href="#" id="swap">${mode === 'login' ? 'Create an account' : 'Sign in'}</a></p>` : ''}
+          ${mode === 'login'
+            ? (cfg.can_register ? `<p class="sub" style="margin-top:18px;text-align:center">New here? <a href="/signup" id="swap">Create an account</a></p>` : '')
+            : `<p class="sub" style="margin-top:18px;text-align:center">Already have an account? <a href="/login" id="swap">Sign in</a></p>`}
         </div></section></div>`;
       $('#pwEye').addEventListener('click', (e) => {
         const inp = $('input[name=password]'), show = inp.type === 'password';
@@ -157,15 +169,15 @@
         e.currentTarget.setAttribute('aria-label', label); e.currentTarget.title = label;
         inp.focus();
       });
-      $('#swap')?.addEventListener('click', (e) => { e.preventDefault(); mode = mode === 'login' ? 'register' : 'login'; draw(); });
+      $('#swap')?.addEventListener('click', (e) => { e.preventDefault(); go(mode === 'login' ? 'register' : 'login'); });
       $('#authForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = $('button[type=submit]'); btn.disabled = true;
         try {
           const j = await api('POST', `/api/auth/${mode}`, Object.fromEntries(new FormData(e.currentTarget)));
-          me = j.user;
+          me = j.user; cfg.first_user = false;
           const m = await api('GET', '/api/auth/me'); cfg.tz = m.tz; today = m.today;
-          location.hash = '#/dashboard';
+          history.replaceState(null, '', '/#/dashboard');
           showShell();
         } catch (ex) { $('.form-err').textContent = ex.message; btn.disabled = false; }
       });

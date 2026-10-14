@@ -3,12 +3,10 @@ const L = require('./lib');
 
 const MAX_LINK_SERIES = 5;
 
-function buildAnalytics(db, userId, range) {
+async function buildAnalytics(store, userId, range) {
   const today = L.dayOf();
 
-  const links = db.prepare('SELECT id, title, is_open, daily_cap, archived, created_at FROM links WHERE user_id = ? ORDER BY id').all(userId);
-  const subs = db.prepare('SELECT link_id, day, network, created_at FROM submissions WHERE user_id = ? ORDER BY day, id').all(userId);
-  const members = db.prepare('SELECT id, name, created_at FROM members WHERE user_id = ?').all(userId);
+  const [links, subs, members] = await Promise.all([store.links.all(userId), store.subs.liteAll(userId), store.members.all(userId)]);
 
   /* ---------- window ---------- */
   let start;
@@ -86,13 +84,7 @@ function buildAnalytics(db, userId, range) {
   const past = pool.filter((d) => d <= today).slice(-12);
   const monthDates = L.eventFridays(thisMonth);
   const wanted = [...new Set([...past, ...monthDates])];
-  const statRows = wanted.length
-    ? db.prepare(
-        `SELECT es.member_id, es.event_date AS d, es.called, es.attended, m.name, m.phone
-           FROM event_status es JOIN members m ON m.id = es.member_id
-          WHERE m.user_id = ? AND es.event_date IN (${wanted.map(() => '?').join(',')})`
-      ).all(userId, ...wanted)
-    : [];
+  const statRows = await store.marks.forDates(userId, wanted);
   const createdDayOf = new Map(members.map((m, i) => [m.id, memberDays[i]]));
   const statFor = (d) => {
     const rows = statRows.filter((r) => r.d === d);
@@ -125,25 +117,18 @@ function buildAnalytics(db, userId, range) {
   const nextEvent = pool.find((d) => d >= today) || null;
   let toCall = { date: nextEvent, total: 0, people: [] };
   if (nextEvent) {
-    const rows = db.prepare(
-      `SELECT m.id, m.name, m.phone FROM members m
-        LEFT JOIN event_status es ON es.member_id = m.id AND es.event_date = ?
-        WHERE m.user_id = ? AND COALESCE(es.called, 0) = 0
-        ORDER BY m.name COLLATE NOCASE`
-    ).all(nextEvent, userId);
+    const called = new Set((await store.marks.forDates(userId, [nextEvent])).filter((r) => r.called).map((r) => r.member_id));
+    const rows = members.filter((m) => !called.has(m.id)).map((m) => ({ id: m.id, name: m.name, phone: m.phone }));
     toCall = { date: nextEvent, total: rows.length, people: rows.slice(0, 10) };
   }
-  const topAttendees = db.prepare(
-    `SELECT m.id, m.name, SUM(es.attended) AS attended, SUM(es.called) AS called
-       FROM members m JOIN event_status es ON es.member_id = m.id
-      WHERE m.user_id = ? GROUP BY m.id HAVING attended > 0
-      ORDER BY attended DESC, m.name COLLATE NOCASE LIMIT 6`
-  ).all(userId);
+  const topAttendees = (await store.marks.attendedTotals(userId))
+    .filter((x) => x.attended > 0)
+    .sort((a, b) => b.attended - a.attended || String(a.name).localeCompare(String(b.name)))
+    .slice(0, 6);
 
   /* ---------- headline numbers ---------- */
   const open = links.filter((l) => !l.archived && l.is_open);
-  const takenToday = db.prepare('SELECT link_id, COUNT(*) AS c FROM submissions WHERE user_id = ? AND day = ? GROUP BY link_id').all(userId, today);
-  const takenMap = new Map(takenToday.map((r) => [r.link_id, r.c]));
+  const takenMap = await store.subs.countsByLink(userId, today);
   const slots = {
     capacity: open.reduce((n, l) => n + l.daily_cap, 0),
     taken: open.reduce((n, l) => n + Math.min(takenMap.get(l.id) || 0, l.daily_cap), 0),
